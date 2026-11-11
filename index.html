@@ -1,0 +1,676 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Moose Gear - Voice Examination</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f2f4f7;
+      color: #222;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 25px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 3px 15px rgba(0,0,0,.08);
+    }
+
+    h1 { text-align: center; color: #222; }
+    .subtitle { text-align: center; color: #666; }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin: 18px 0 7px;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    .question-box {
+      margin-top: 25px;
+      padding: 22px;
+      background: #f7f8fa;
+      border-radius: 8px;
+    }
+
+    .category { color: #777; font-size: 13px; }
+    .question { font-size: 19px; font-weight: bold; line-height: 1.5; }
+
+    .timer {
+      text-align: center;
+      font-size: 34px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+
+    .progress {
+      height: 9px;
+      background: #e5e5e5;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0;
+      background: #222;
+      transition: width .2s;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 7px;
+      background: #222;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    .stop { background: #b42318; }
+    .secondary { background: #555; }
+
+    .status {
+      margin-top: 15px;
+      padding: 12px;
+      background: #f1f3f5;
+      border-radius: 6px;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .hidden { display: none; }
+
+    .notice {
+      color: #666;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 18px;
+    }
+
+    .success {
+      color: #16753b;
+      font-weight: bold;
+      text-align: center;
+      font-size: 19px;
+    }
+
+    .error { color: #b42318; }
+
+    @media(max-width: 500px) {
+      .container { padding: 20px; margin: 5px auto; }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>MOOSE GEAR</h1>
+  <p class="subtitle">Voice Examination</p>
+
+  <div id="app">
+
+    <div id="candidateSection">
+
+      <p>Please provide your information before starting the examination.</p>
+
+      <label for="candidateName">Full Name *</label>
+      <input id="candidateName" type="text"
+        placeholder="Enter your complete name" required>
+
+      <label for="email">Email Address *</label>
+      <input id="email" type="email"
+        placeholder="Enter your email address" required>
+
+      <p class="notice">
+        Please use a quiet environment and allow microphone access
+        when your browser asks for permission. Each question has
+        a maximum recording time of 2 minutes.
+      </p>
+
+      <button id="startExamButton" type="button">
+        Start Voice Examination
+      </button>
+
+    </div>
+
+    <div id="examSection" class="hidden">
+
+      <p id="questionCount" class="subtitle"></p>
+
+      <div class="progress">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+
+      <div class="question-box">
+        <p id="category" class="category"></p>
+        <p id="question" class="question"></p>
+      </div>
+
+      <div id="timer" class="timer">02:00</div>
+
+      <button id="recordButton" type="button">
+        Start Recording
+      </button>
+
+      <button id="stopButton" type="button" class="stop hidden">
+        Stop Recording
+      </button>
+
+      <div id="recordingStatus" class="status">
+        Ready to record.
+      </div>
+
+      <button id="nextButton" type="button" class="secondary hidden">
+        Continue to Next Question
+      </button>
+
+    </div>
+
+    <div id="reviewSection" class="hidden">
+
+      <h2>Examination Completed</h2>
+
+      <p>All five questions have been recorded.</p>
+
+      <div id="reviewStatus" class="status">
+        Please submit your recordings.
+      </div>
+
+      <button id="submitButton" type="button">
+        Submit Voice Examination
+      </button>
+
+    </div>
+
+    <div id="resultSection" class="hidden"></div>
+
+  </div>
+
+  <p class="notice">
+    Please do not close this page while recording or submitting
+    your examination.
+  </p>
+
+</div>
+
+<!-- Hidden submission frame -->
+<iframe name="submissionFrame" id="submissionFrame"
+  style="display:none"></iframe>
+
+<form id="submissionForm"
+  method="POST"
+  target="submissionFrame"
+  action="https://script.google.com/macros/s/AKfycbzjFF5IvhyD8yFHJxH6Qq9StY7WucaOcDPm-QDA5OZbWpj3iseuN8DWsfskpDm0cUXeyA/exec"
+  style="display:none">
+
+  <input type="hidden" name="payload" id="payloadInput">
+
+</form>
+
+<script>
+
+const QUESTIONS = [
+  {
+    category: "Self-Introduction",
+    question: "Please introduce yourself and briefly describe your previous work experience."
+  },
+  {
+    category: "Interest in the Position",
+    question: "Why are you interested in applying for this position?"
+  },
+  {
+    category: "Problem Solving",
+    question: "Describe a situation where you encountered a problem at work and how you solved it."
+  },
+  {
+    category: "Customer Service",
+    question: "How would you handle an upset or difficult customer?"
+  },
+  {
+    category: "English Communication",
+    question: "Why do you believe you are the right candidate for this position?"
+  }
+];
+
+const MAX_SECONDS = 120;
+
+let currentQuestion = 0;
+let recordings = [];
+let mediaRecorder = null;
+let activeStream = null;
+let audioChunks = [];
+let timerInterval = null;
+let remainingSeconds = MAX_SECONDS;
+let isRecording = false;
+
+const $ = id => document.getElementById(id);
+
+function show(element) {
+  $(element).classList.remove("hidden");
+}
+
+function hide(element) {
+  $(element).classList.add("hidden");
+}
+
+function setStatus(message, isError = false) {
+  $("recordingStatus").textContent = message;
+  $("recordingStatus").classList.toggle("error", isError);
+}
+
+function formatTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+
+  return String(minutes).padStart(2, "0") + ":" +
+    String(secs).padStart(2, "0");
+}
+
+async function startExam() {
+
+  const name = $("candidateName").value.trim();
+  const email = $("email").value.trim();
+
+  if (!name || !email) {
+    alert("Please enter your full name and email address.");
+    return;
+  }
+
+  if (!$("email").checkValidity()) {
+    alert("Please enter a valid email address.");
+    return;
+  }
+
+  if (!navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia) {
+    alert("Microphone access is unavailable. Please use an updated browser over HTTPS.");
+    return;
+  }
+
+  $("startExamButton").disabled = true;
+  $("startExamButton").textContent = "Requesting microphone access...";
+
+  try {
+
+    activeStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
+
+    hide("candidateSection");
+    show("examSection");
+
+    displayQuestion();
+
+  } catch (error) {
+
+    console.error(error);
+
+    $("startExamButton").disabled = false;
+    $("startExamButton").textContent = "Start Voice Examination";
+
+    alert(
+      "Unable to access your microphone. Please allow microphone permission in your browser settings and try again."
+    );
+
+  }
+}
+
+function displayQuestion() {
+
+  const q = QUESTIONS[currentQuestion];
+
+  $("questionCount").textContent =
+    "Question " + (currentQuestion + 1) +
+    " of " + QUESTIONS.length;
+
+  $("progressBar").style.width =
+    (currentQuestion / QUESTIONS.length * 100) + "%";
+
+  $("category").textContent = q.category;
+  $("question").textContent = q.question;
+
+  $("timer").textContent = formatTime(MAX_SECONDS);
+
+  remainingSeconds = MAX_SECONDS;
+
+  hide("nextButton");
+  hide("stopButton");
+
+  $("recordButton").disabled = false;
+  $("recordButton").textContent = "Start Recording";
+
+  setStatus("Ready to record.");
+}
+
+function startTimer() {
+
+  clearInterval(timerInterval);
+
+  remainingSeconds = MAX_SECONDS;
+
+  $("timer").textContent = formatTime(remainingSeconds);
+
+  timerInterval = setInterval(() => {
+
+    remainingSeconds--;
+
+    $("timer").textContent = formatTime(remainingSeconds);
+
+    if (remainingSeconds <= 0) {
+      stopRecording(true);
+    }
+
+  }, 1000);
+}
+
+async function startRecording() {
+
+  if (!activeStream) {
+    alert("Microphone is not available. Please reload the page and try again.");
+    return;
+  }
+
+  if (!window.MediaRecorder) {
+    alert("Your browser does not support audio recording. Please use an updated Chrome browser.");
+    return;
+  }
+
+  audioChunks = [];
+
+  try {
+
+    let mimeType = "";
+
+    if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+      mimeType = "audio/webm;codecs=opus";
+    } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+      mimeType = "audio/webm";
+    } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+      mimeType = "audio/mp4";
+    }
+
+    mediaRecorder = mimeType
+      ? new MediaRecorder(activeStream, { mimeType })
+      : new MediaRecorder(activeStream);
+
+    mediaRecorder.ondataavailable = event => {
+      if (event.data && event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+
+      try {
+
+        const blob = new Blob(audioChunks, {
+          type: mediaRecorder.mimeType || "audio/webm"
+        });
+
+        if (blob.size === 0) {
+          throw new Error("The recording is empty. Please record again.");
+        }
+
+        const base64 = await blobToBase64(blob);
+
+        recordings[currentQuestion] = {
+          data: {
+            base64: base64,
+            mimeType: blob.type || "audio/webm"
+          }
+        };
+
+        setStatus("Recording saved for Question " +
+          (currentQuestion + 1) + ".");
+
+        hide("stopButton");
+
+        $("recordButton").disabled = true;
+
+        if (currentQuestion < QUESTIONS.length - 1) {
+          $("nextButton").textContent = "Continue to Next Question";
+        } else {
+          $("nextButton").textContent = "Finish Examination";
+        }
+
+        show("nextButton");
+
+      } catch (error) {
+
+        console.error(error);
+
+        setStatus(error.message || "Unable to process recording.", true);
+
+        $("recordButton").disabled = false;
+        $("recordButton").textContent = "Record Again";
+
+      }
+
+    };
+
+    mediaRecorder.start();
+
+    isRecording = true;
+
+    $("recordButton").disabled = true;
+
+    show("stopButton");
+
+    setStatus("Recording in progress. Please speak clearly.");
+
+    startTimer();
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert("Unable to start recording: " + error.message);
+
+  }
+}
+
+function stopRecording(timeLimitReached = false) {
+
+  if (!mediaRecorder || mediaRecorder.state !== "recording") {
+    return;
+  }
+
+  clearInterval(timerInterval);
+
+  isRecording = false;
+
+  mediaRecorder.stop();
+
+  hide("stopButton");
+
+  setStatus(
+    timeLimitReached
+      ? "Two-minute recording limit reached. Processing your recording..."
+      : "Processing your recording..."
+  );
+
+}
+
+function blobToBase64(blob) {
+
+  return new Promise((resolve, reject) => {
+
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+
+      const result = reader.result;
+
+      if (typeof result !== "string") {
+        reject(new Error("Unable to read audio recording."));
+        return;
+      }
+
+      resolve(result.split(",")[1]);
+
+    };
+
+    reader.onerror = () => {
+      reject(new Error("Failed to process audio recording."));
+    };
+
+    reader.readAsDataURL(blob);
+
+  });
+}
+
+function nextQuestion() {
+
+  if (!recordings[currentQuestion]) {
+    alert("Please complete the recording before continuing.");
+    return;
+  }
+
+  currentQuestion++;
+
+  if (currentQuestion >= QUESTIONS.length) {
+
+    clearInterval(timerInterval);
+
+    if (activeStream) {
+      activeStream.getTracks().forEach(track => track.stop());
+      activeStream = null;
+    }
+
+    hide("examSection");
+    show("reviewSection");
+
+    $("progressBar").style.width = "100%";
+
+    return;
+  }
+
+  displayQuestion();
+}
+
+function submitExam() {
+
+  const name = $("candidateName").value.trim();
+  const email = $("email").value.trim();
+
+  if (recordings.length !== QUESTIONS.length ||
+      recordings.some(item => !item || !item.data || !item.data.base64)) {
+
+    alert("Please complete all five recordings.");
+    return;
+  }
+
+  const payload = {
+    candidateName: name,
+    email: email,
+    recordings: recordings
+  };
+
+  $("submitButton").disabled = true;
+  $("submitButton").textContent = "Submitting...";
+
+  $("reviewStatus").textContent =
+    "Uploading your recordings. Please wait and do not close this page.";
+
+  $("payloadInput").value = JSON.stringify(payload);
+
+  $("submissionForm").submit();
+
+  // Wait for the Apps Script response message.
+  // A timeout is used only to warn the candidate if no response arrives.
+  window.submissionTimeout = setTimeout(() => {
+
+    if ($("submitButton").disabled) {
+
+      $("reviewStatus").textContent =
+        "Submission is taking longer than expected. Please wait and check the result before trying again.";
+
+    }
+
+  }, 90000);
+
+}
+
+window.addEventListener("message", event => {
+
+  const data = event.data;
+
+  if (!data || data.type !== "VOICE_EXAM_RESULT") {
+    return;
+  }
+
+  clearTimeout(window.submissionTimeout);
+
+  const result = data.result || {};
+
+  if (result.success) {
+
+    hide("reviewSection");
+
+    $("resultSection").innerHTML =
+      '<p class="success">Your Voice Examination has been submitted successfully!</p>' +
+      '<p>Thank you for completing the Moose Gear Voice Examination. Your responses have been received.</p>';
+
+    show("resultSection");
+
+  } else {
+
+    $("submitButton").disabled = false;
+    $("submitButton").textContent = "Submit Voice Examination";
+
+    $("reviewStatus").textContent =
+      result.message || "Submission failed. Please try again.";
+
+    $("reviewStatus").classList.add("error");
+
+  }
+
+});
+
+$("startExamButton").addEventListener("click", startExam);
+
+$("recordButton").addEventListener("click", startRecording);
+
+$("stopButton").addEventListener("click", () => stopRecording(false));
+
+$("nextButton").addEventListener("click", nextQuestion);
+
+$("submitButton").addEventListener("click", submitExam);
+
+</script>
+
+</body>
+</html>
